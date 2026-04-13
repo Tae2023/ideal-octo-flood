@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Motor Claim 2 รายงานรถเสียหายจากภัยพิบัติ</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    body { font-family: 'Sarabun', sans-serif; background-color: #f1f5f9; color: #334155; }
+    
+    /* Navigation */
+    .nav-link { padding: 0.75rem 1rem; border-bottom: 2px solid transparent; font-weight: 500; color: #64748b; transition: all 0.2s; }
+    .nav-link:hover { color: #1e293b; }
+    .nav-active { border-bottom-color: #0f172a; color: #0f172a; font-weight: 600; }
+
+    /* Cards */
+    .kpi-card { transition: all 0.3s ease; border: 1px solid #e2e8f0; }
+    .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+
+    /* Custom Input/Scroll */
+    input[list] { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.5rem center; background-size: 1.5em 1.5em; }
+    .custom-scroll::-webkit-scrollbar { width: 6px; }
+    .custom-scroll::-webkit-scrollbar-track { background: #f1f1f1; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    .custom-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    
+    /* Table Sorting */
+    th.sortable { cursor: pointer; user-select: none; transition: background 0.2s; }
+    th.sortable:hover { background-color: #f1f5f9; }
+    
+    /* Toggle Switch */
+    .toggle-checkbox:checked { right: 0; border-color: #0f172a; }
+    .toggle-checkbox:checked + .toggle-label { background-color: #0f172a; }
+    
+    /* Loading */
+    .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 50; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(2px); }
+  </style>
+</head>
+<body class="antialiased">
+
+  <nav class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between h-16">
+        <div class="flex items-center gap-3">
+          <div class="bg-slate-800 text-white p-2 rounded-lg shadow-sm">
+             <i class="fa-solid fa-chart-line text-lg"></i>
+          </div>
+          <div class="leading-tight">
+             <h1 class="font-bold text-lg text-slate-800 tracking-tight">Executive Dashboard</h1>
+             <p class="text-xs text-slate-500">Motor Claim 2 รายงานความเสียหายภัยพิบัติ</p>
+          </div>
+        </div>
+        <div class="flex space-x-4 items-center">
+          <button onclick="switchTab('dashboard')" id="btn-dashboard" class="nav-link nav-active">
+             <i class="fa-solid fa-chart-pie mr-1"></i> ภาพรวม
+          </button>
+          <button onclick="switchTab('data')" id="btn-data" class="nav-link">
+             <i class="fa-solid fa-table-list mr-1"></i> จัดการข้อมูล
+          </button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div id="loading" class="loading-overlay">
+    <div class="text-center">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-800 mx-auto mb-3"></div>
+      <p class="text-slate-600 font-medium">กำลังประมวลผล...</p>
+    </div>
+  </div>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <div id="dashboard-section" class="fade-in">
+      
+      <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4 bg-white p-5 rounded-xl shadow border border-slate-200">
+        <div>
+           <p class="text-sm text-slate-500 mb-1">ข้อมูล ณ วันที่</p>
+           <div class="flex items-center text-slate-800 font-semibold text-lg">
+              <i class="fa-regular fa-calendar-days mr-2 text-slate-400"></i>
+              <span id="current-datetime">...</span>
+           </div>
+        </div>
+
+        <div class="flex flex-wrap gap-3 w-full lg:w-auto">
+          <div class="w-full sm:w-48 relative">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400"><i class="fa-solid fa-house-flood-water text-xs"></i></span>
+            <input list="list-dash-disaster" id="filter-dash-disaster" onchange="renderDashboard()" class="pl-8 w-full rounded-lg border-slate-300 text-sm focus:ring-slate-500 focus:border-slate-500" placeholder="กรองตามภัยพิบัติ">
+            <datalist id="list-dash-disaster"><option value="ทั้งหมด"></datalist>
+          </div>
+          <div class="w-full sm:w-48 relative">
+             <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400"><i class="fa-solid fa-map-location-dot text-xs"></i></span>
+             <input list="list-dash-province" id="filter-dash-province" onchange="renderDashboard()" class="pl-8 w-full rounded-lg border-slate-300 text-sm focus:ring-slate-500 focus:border-slate-500" placeholder="กรองตามจังหวัด">
+             <datalist id="list-dash-province"><option value="ทั้งหมด"></datalist>
+          </div>
+          <div class="w-full sm:w-48 relative">
+             <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400"><i class="fa-solid fa-users text-xs"></i></span>
+             <input list="list-dash-customer" id="filter-dash-customer" onchange="renderDashboard()" class="pl-8 w-full rounded-lg border-slate-300 text-sm focus:ring-slate-500 focus:border-slate-500" placeholder="กรองตามกลุ่มลูกค้า">
+             <datalist id="list-dash-customer"><option value="ทั้งหมด"></datalist>
+          </div>
+          <button onclick="fetchData()" class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg text-sm transition shadow-md flex items-center justify-center gap-2">
+             <i class="fa-solid fa-rotate-right"></i> อัปเดต
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+         <div class="kpi-card bg-white p-5 rounded-xl flex flex-col justify-between border-l-4 border-l-slate-400">
+            <div class="text-slate-500 text-sm font-medium">จำนวนรับแจ้งรวม</div>
+            <div class="text-2xl font-bold text-slate-800 mt-1" id="kpi-total">0 <span class="text-sm font-normal text-slate-400">คัน</span></div>
+         </div>
+         <div class="kpi-card bg-white p-5 rounded-xl flex flex-col justify-between border-l-4 border-l-yellow-400">
+            <div class="text-slate-500 text-sm font-medium">มูลค่าประมาณการรวม</div>
+            <div class="text-2xl font-bold text-slate-800 mt-1"><span id="kpi-est">0</span> <span class="text-sm font-normal text-slate-400">บาท</span></div>
+         </div>
+         <div class="kpi-card bg-white p-5 rounded-xl flex flex-col justify-between border-l-4 border-l-teal-400">
+            <div class="text-slate-500 text-sm font-medium">ตรวจสอบแล้ว</div>
+            <div class="text-2xl font-bold text-teal-600 mt-1" id="kpi-inspected-count">0 <span class="text-sm font-normal text-slate-400">คัน</span></div>
+         </div>
+         <div class="kpi-card bg-white p-5 rounded-xl flex flex-col justify-between border-l-4 border-l-orange-400">
+            <div class="text-slate-500 text-sm font-medium">ยังไม่ตรวจสอบ</div>
+            <div class="text-2xl font-bold text-orange-500 mt-1" id="kpi-pending-count">0 <span class="text-sm font-normal text-slate-400">คัน</span></div>
+         </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        
+        <div class="kpi-card bg-white rounded-xl p-0 relative overflow-hidden border-l-4 border-l-emerald-500 flex flex-col h-full">
+           <div class="p-5 pb-2 relative z-10">
+               <div class="absolute top-0 right-0 p-4 opacity-5">
+                  <i class="fa-solid fa-sack-dollar text-8xl text-emerald-600"></i>
+               </div>
+               <p class="text-sm font-medium text-slate-500 mb-1">มูลค่าอนุมัติรวม</p>
+               <div class="flex flex-col">
+                   <h3 class="text-3xl font-bold text-emerald-600 tracking-tight"><span id="kpi-approved">0</span> <span class="text-sm font-normal text-slate-400">บาท</span></h3>
+                   <div class="mt-1">
+                     <span class="text-sm font-bold text-slate-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100"><span id="kpi-approved-count">0</span> คัน</span>
+                     <span class="text-[10px] text-slate-400 ml-1">(เฉพาะที่มีวันอนุมัติ)</span>
+                   </div>
+               </div>
+           </div>
+           <div class="bg-emerald-50/50 flex-grow px-5 py-3 mt-2 overflow-y-auto custom-scroll max-h-[120px] min-h-[80px]">
+               <div class="text-[10px] font-bold text-emerald-400 uppercase tracking-wider mb-2">รายละเอียดแยกตามกลุ่มลูกค้า</div>
+               <div id="approved-breakdown" class="space-y-1 text-xs"></div>
+           </div>
+        </div>
+
+        <div class="kpi-card bg-white rounded-xl p-0 relative overflow-hidden border-l-4 border-l-indigo-500 flex flex-col h-full">
+           <div class="p-5 pb-2 relative z-10">
+               <div class="absolute top-0 right-0 p-4 opacity-5">
+                   <i class="fa-solid fa-screwdriver-wrench text-8xl text-indigo-600"></i>
+               </div>
+               <p class="text-sm font-medium text-slate-500 mb-1">จัดซ่อมได้ (Repairable)</p>
+               <div class="flex flex-col">
+                   <h3 class="text-3xl font-bold text-indigo-600 tracking-tight"><span id="kpi-repairable-amt">0</span> <span class="text-sm font-normal text-slate-400">บาท</span></h3>
+                   <div class="mt-1">
+                     <span class="text-sm font-bold text-slate-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100"><span id="kpi-repairable-count">0</span> คัน</span>
+                     <span class="text-[10px] text-slate-400 ml-1">(ตรวจสอบแล้ว ไม่ใช่ Total Loss ใช้ยอดประมาณการ)</span>
+                   </div>
+               </div>
+           </div>
+           <div class="bg-indigo-50/50 flex-grow px-5 py-3 mt-2 overflow-y-auto custom-scroll max-h-[120px] min-h-[80px]">
+               <div class="text-[10px] font-bold text-indigo-400 uppercase tracking-wider mb-2">รายละเอียดแยกตามกลุ่มลูกค้า</div>
+               <div id="repairable-breakdown" class="space-y-1 text-xs"></div>
+           </div>
+        </div>
+
+        <div class="kpi-card bg-white rounded-xl p-0 relative overflow-hidden border-l-4 border-l-rose-500 flex flex-col h-full">
+           <div class="p-5 pb-2 relative z-10">
+               <div class="absolute top-0 right-0 p-4 opacity-5">
+                  <i class="fa-solid fa-car-burst text-8xl text-rose-600"></i>
+               </div>
+               <p class="text-sm font-medium text-slate-500 mb-1">Total Loss (คืนทุนประกันภัย)</p>
+               <div class="flex flex-col">
+                   <h3 class="text-3xl font-bold text-rose-600 tracking-tight"><span id="kpi-totalloss-amt">0</span> <span class="text-sm font-normal text-slate-400">บาท</span></h3>
+                   <div class="mt-1">
+                     <span class="text-sm font-bold text-slate-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-100"><span id="kpi-totalloss-count">0</span> คัน</span>
+                     <span class="text-[10px] text-slate-400 ml-1">(มีวันอนุมัติแล้ว)</span>
+                   </div>
+               </div>
+           </div>
+           <div class="bg-rose-50/50 flex-grow px-5 py-3 mt-2 overflow-y-auto custom-scroll max-h-[120px] min-h-[80px]">
+               <div class="text-[10px] font-bold text-rose-400 uppercase tracking-wider mb-2">รายละเอียดแยกตามกลุ่มลูกค้า</div>
+               <div id="totalloss-breakdown" class="space-y-1 text-xs"></div>
+           </div>
+        </div>
+      </div>
+      
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 lg:col-span-2">
+              <h3 class="font-bold text-lg mb-6 text-slate-800 flex items-center">
+                  <span class="w-1.5 h-6 bg-slate-800 rounded-full mr-3"></span> สถานะงานซ่อม
+              </h3>
+              <div id="card-status-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4"></div>
+          </div>
+          
+          <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+              <h3 class="font-bold text-lg mb-6 text-slate-800 flex items-center">
+                <span class="w-1.5 h-6 bg-indigo-500 rounded-full mr-3"></span> สรุประดับความเสียหาย
+              </h3>
+              <div id="card-damage-level-container" class="space-y-4"></div>
+          </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 h-[400px] flex flex-col">
+          <h3 class="font-bold text-lg mb-4 text-slate-800 flex items-center">
+            <span class="w-1.5 h-6 bg-blue-500 rounded-full mr-3"></span> ศูนย์ซ่อม/ที่จอด (Shop Ranking)
+          </h3>
+          <div class="overflow-y-auto custom-scroll flex-grow pr-1">
+             <table class="min-w-full text-sm text-left">
+                <thead class="bg-slate-50 text-slate-600 sticky top-0 font-semibold shadow-sm z-10">
+                    <tr>
+                        <th class="py-3 px-4 rounded-l-lg">ชื่อศูนย์/อู่</th>
+                        <th class="py-3 px-4 text-right rounded-r-lg">จำนวนรถ</th>
+                    </tr>
+                </thead>
+                <tbody id="shop-ranking-body" class="divide-y divide-slate-100"></tbody>
+             </table>
+          </div>
+        </div>
+        
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 h-[400px] flex flex-col">
+          <h3 class="font-bold text-lg mb-4 text-slate-800 flex items-center">
+            <span class="w-1.5 h-6 bg-purple-500 rounded-full mr-3"></span> กลุ่มลูกค้า
+          </h3>
+          <div id="card-customer-container" class="space-y-3 custom-scroll overflow-y-auto flex-grow pr-2"></div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 mb-6">
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+          <h3 class="font-bold text-lg mb-6 text-slate-800 flex items-center">
+             <span class="w-1.5 h-6 bg-orange-500 rounded-full mr-3"></span> พื้นที่ความเสียหาย (Top 5)
+          </h3>
+          <div id="card-province-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <div id="data-section" class="hidden fade-in">
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto items-center">
+          <div class="relative w-full md:w-64">
+             <i class="fa-solid fa-search absolute left-3 top-3 text-slate-400 text-sm"></i>
+             <input type="text" id="search-input" onkeyup="filterTable()" placeholder="ค้นหา ทะเบียน, เลขรับแจ้ง..." class="pl-9 w-full border-slate-300 rounded-lg text-sm focus:ring-slate-500 focus:border-slate-500">
+          </div>
+          
+          <select id="filter-status" onchange="filterTable()" class="border-slate-300 rounded-lg text-sm w-full sm:w-auto focus:ring-slate-500 focus:border-slate-500">
+             <option value="ทั้งหมด">สถานะทั้งหมด</option>
+             <option value="ยังไม่เข้าอู่">ยังไม่เข้าอู่</option>
+             <option value="รอเสนอราคา">รอเสนอราคา</option>
+             <option value="รอเข้าไปตรวจ">รอเข้าไปตรวจ</option>
+             <option value="กำลังประเมิน">กำลังประเมิน</option>
+             <option value="รออนุมัติ">รออนุมัติ</option>
+             <option value="อนุมัติแล้ว">อนุมัติแล้ว</option>
+             <option value="กำลังซ่อม">กำลังซ่อม</option>
+             <option value="รออะไหล่B/O">รออะไหล่B/O</option>
+             <option value="รถเสร็จแล้ว">รถเสร็จแล้ว (เสร็จสิ้น)</option>
+             <option value="คืนทุนแล้ว">คืนทุนแล้ว (เสร็จสิ้น)</option>
+          </select>
+
+          <select id="filter-inspected" onchange="filterTable()" class="border-slate-300 rounded-lg text-sm w-full sm:w-auto focus:ring-slate-500 focus:border-slate-500">
+             <option value="ทั้งหมด">การตรวจสอบ (ทั้งหมด)</option>
+             <option value="ยังไม่ได้ตรวจ">ยังไม่ได้ตรวจ</option>
+             <option value="ตรวจที่อู่แล้ว">ตรวจที่อู่แล้ว</option>
+             <option value="ตรวจจากรูปแล้ว">ตรวจจากรูปแล้ว</option>
+          </select>
+          
+          <div class="flex items-center bg-slate-50 px-3 py-2 rounded-lg border border-slate-200">
+            <div class="relative inline-block w-9 mr-2 align-middle select-none">
+                <input type="checkbox" name="toggle" id="toggle-completed" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer border-slate-300 transition-all duration-300" onchange="filterTable()"/>
+                <label for="toggle-completed" class="toggle-label block overflow-hidden h-5 rounded-full bg-slate-300 cursor-pointer transition-all duration-300"></label>
+            </div>
+            <label for="toggle-completed" class="text-xs font-medium text-slate-600 cursor-pointer">แสดงงานเสร็จ</label>
+          </div>
+        </div>
+        
+        <div class="flex gap-2">
+            <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm flex items-center gap-2">
+                <i class="fa-solid fa-file-excel"></i> Export Excel
+            </button>
+            <button onclick="openModal()" class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm flex items-center gap-2">
+                <i class="fa-solid fa-plus"></i> เพิ่มรายการ
+            </button>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="overflow-x-auto min-h-[400px]">
+            <table class="min-w-full divide-y divide-slate-200 text-sm">
+            <thead class="bg-slate-50 select-none text-slate-500">
+                <tr>
+                <th onclick="sortTable('ReportDate')" class="sortable px-4 py-3 text-left font-semibold uppercase tracking-wider">
+                    จอด (วัน) <i id="sort-icon-ReportDate" class="fa-solid fa-sort"></i>
+                </th>
+                <th onclick="sortTable('ClaimNo')" class="sortable px-4 py-3 text-left font-semibold uppercase tracking-wider">
+                    เลขรับแจ้ง <i id="sort-icon-ClaimNo" class="fa-solid fa-sort"></i>
+                </th>
+                <th onclick="sortTable('PlateNo')" class="sortable px-4 py-3 text-left font-semibold uppercase tracking-wider">
+                    ทะเบียน/ประเภท <i id="sort-icon-PlateNo" class="fa-solid fa-sort"></i>
+                </th>
+                <th onclick="sortTable('ShopName')" class="sortable px-4 py-3 text-left font-semibold uppercase tracking-wider">
+                    อู่/ศูนย์ <i id="sort-icon-ShopName" class="fa-solid fa-sort"></i>
+                </th>
+                <th onclick="sortTable('DamageLevel')" class="sortable px-4 py-3 text-left font-semibold uppercase tracking-wider">
+                    ระดับเสียหาย <i id="sort-icon-DamageLevel" class="fa-solid fa-sort"></i>
+                </th>
+                <th onclick="sortTable('Status')" class="sortable px-4 py-3 text-left font-semibold uppercase tracking-wider">
+                    สถานะ <i id="sort-icon-Status" class="fa-solid fa-sort"></i>
+                </th>
+                <th onclick="sortTable('Inspected')" class="sortable px-4 py-3 text-left font-semibold uppercase tracking-wider">
+                    ตรวจสอบ <i id="sort-icon-Inspected" class="fa-solid fa-sort"></i>
+                </th>
+                <th onclick="sortTable('TeamName')" class="sortable px-4 py-3 text-left font-semibold uppercase tracking-wider">
+                    ทีมดูแล <i id="sort-icon-TeamName" class="fa-solid fa-sort"></i>
+                </th>
+                </tr>
+            </thead>
+            <tbody id="data-table-body" class="bg-white divide-y divide-slate-100"></tbody>
+            </table>
+        </div>
+        <div id="no-data-msg" class="p-12 text-center text-slate-400 hidden">
+            <i class="fa-regular fa-folder-open text-4xl mb-3 opacity-50"></i>
+            <p>ไม่พบข้อมูล</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="crud-modal" class="fixed inset-0 z-50 hidden bg-black bg-opacity-60 flex items-center justify-center p-4 overflow-y-auto backdrop-blur-sm">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative border border-slate-200">
+      <div class="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center z-10">
+        <div class="flex items-center gap-2">
+            <div class="bg-blue-100 text-blue-600 p-2 rounded-lg"><i class="fa-solid fa-file-pen"></i></div>
+            <h3 class="text-xl font-bold text-slate-800" id="modal-title">บันทึกข้อมูลเคลม</h3>
+        </div>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 text-2xl transition">&times;</button>
+      </div>
+      
+      <form id="claim-form" onsubmit="handleFormSubmit(event)" class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <input type="hidden" name="id" id="field-id">
+        
+        <div class="md:col-span-2 pb-2 mb-2 font-bold text-slate-800 border-b flex items-center gap-2">
+            <i class="fa-solid fa-circle-info text-blue-500"></i> ข้อมูลการแจ้งเหตุ
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">เลขรับแจ้ง (Claim No)*</label>
+          <input type="text" name="ClaimNo" required class="w-full border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">วันที่รับแจ้ง*</label>
+          <input type="date" name="ReportDate" required class="w-full border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">ภัยพิบัติ</label>
+          <input list="list-disaster" name="DisasterType" class="w-full border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="เลือกหรือพิมพ์...">
+          <datalist id="list-disaster"></datalist>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">ทีมผู้ดูแล</label>
+          <input list="list-team" name="TeamName" class="w-full border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="ระบุทีม...">
+          <datalist id="list-team"></datalist>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">สถานะการตรวจสอบ</label>
+          <select name="Inspected" class="w-full border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-slate-50">
+             <option value="ยังไม่ได้ตรวจ">ยังไม่ได้ตรวจ</option>
+             <option value="ตรวจที่อู่แล้ว">ตรวจที่อู่แล้ว</option>
+             <option value="ตรวจจากรูปแล้ว">ตรวจจากรูปแล้ว</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">ระดับความเสียหาย</label>
+          <select name="DamageLevel" class="w-full border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-slate-50">
+             <option value="">-- ระบุระดับ --</option>
+             <option value="ระดับ A – 8,000–10,000 บาท">ระดับ A – 8,000–10,000 บาท</option>
+             <option value="ระดับ B – 15,000–20,000 บาท">ระดับ B – 15,000–20,000 บาท</option>
+             <option value="ระดับ C – 25,000–30,000 บาท">ระดับ C – 25,000–30,000 บาท</option>
+             <option value="ระดับ D – 30,000 บาทขึ้นไป">ระดับ D – 30,000 บาทขึ้นไป</option>
+             <option value="ระดับ E – คืนทุนประกันภัย">ระดับ E – คืนทุนประกันภัย</option>
+          </select>
+        </div>
+
+        <div class="md:col-span-2 pb-2 mb-2 mt-4 font-bold text-slate-800 border-b flex items-center gap-2">
+            <i class="fa-solid fa-car text-purple-500"></i> ข้อมูลรถยนต์และผู้เอาประกัน
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">ทะเบียนรถ*</label>
+          <input type="text" name="PlateNo" required class="w-full border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">จังหวัดที่เกิดเหตุ</label>
+          <input type="text" name="Province" list="list-province" class="w-full border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+          <datalist id="list-province"></datalist>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">กลุ่มผู้เอาประกัน</label>
+          <input list="list-customer-group" name="CustomerGroup" class="w-full border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+          <datalist id="list-customer-group"></datalist>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">ชื่อผู้เอาประกัน</label>
+          <input type="text" name="OwnerName" class="w-full border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">ยี่ห้อ/รุ่น</label>
+          <input type="text" name="BrandModel" class="w-full border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">ประเภทรถ</label>
+          <input list="list-cartype" name="CarType" class="w-full border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+          <datalist id="list-cartype"></datalist>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">เลขกรมธรรม์</label>
+          <input type="text" name="PolicyNo" class="w-full border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+        </div>
+
+        <div class="md:col-span-2 pb-2 mb-2 mt-4 font-bold text-slate-800 border-b flex items-center gap-2">
+            <i class="fa-solid fa-screwdriver-wrench text-orange-500"></i> การซ่อมและค่าใช้จ่าย
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">สถานที่จอดซ่อม (อู่/ศูนย์)</label>
+          <input type="text" name="ShopName" list="list-shop" class="w-full border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+          <datalist id="list-shop"></datalist>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">สถานะปัจจุบัน</label>
+          <select name="Status" id="input-status" class="w-full border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-indigo-50 font-semibold text-indigo-700">
+            <option value="ยังไม่เข้าอู่">ยังไม่เข้าอู่</option>
+            <option value="รอเสนอราคา">รอเสนอราคา</option>
+            <option value="รอเข้าไปตรวจ">รอเข้าไปตรวจ</option>
+            <option value="กำลังประเมิน">กำลังประเมิน</option>
+            <option value="รออนุมัติ">รออนุมัติ</option>
+            <option value="อนุมัติแล้ว">อนุมัติแล้ว</option>
+            <option value="กำลังซ่อม">กำลังซ่อม</option>
+            <option value="รออะไหล่B/O">รออะไหล่B/O</option>
+            <option value="รถเสร็จแล้ว">รถเสร็จแล้ว (เสร็จสิ้น)</option>
+            <option value="คืนทุนแล้ว">คืนทุนแล้ว (เสร็จสิ้น)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">ยอดประมาณการ (บาท)</label>
+          <input type="number" name="EstCost" class="w-full border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">ยอดอนุมัติ (บาท)</label>
+          <input type="number" name="ApprovedCost" class="w-full border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">วันที่อนุมัติ</label>
+          <input type="date" name="ApprovedDate" class="w-full border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">วันที่ส่งมอบรถ</label>
+          <input type="date" name="DeliveryDate" class="w-full border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+        </div>
+        
+        <div class="md:col-span-2">
+          <label class="block text-sm font-medium text-slate-600 mb-1">หมายเหตุ</label>
+          <textarea name="Remark" rows="2" class="w-full border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-slate-50" placeholder="ระบุรายละเอียดเพิ่มเติม..."></textarea>
+        </div>
+
+        <div class="md:col-span-2 mt-6 pt-4 border-t flex justify-between items-center flex-wrap gap-3">
+          <button type="button" id="btn-delete" onclick="deleteItemFromModal()" class="px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 font-medium transition hidden">
+            <i class="fa-solid fa-trash mr-1"></i> ลบข้อมูล
+          </button>
+          <div class="flex gap-3 ml-auto">
+             <button type="button" onclick="closeModal()" class="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition font-medium">ยกเลิก</button>
+             <button type="button" onclick="markAsComplete()" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-semibold shadow-sm transition">
+                <i class="fa-solid fa-check-circle mr-1"></i> ปิดงาน (รถเสร็จแล้ว)
+             </button>
+             <button type="submit" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow-md transition transform active:scale-95">
+               <i class="fa-solid fa-save mr-1"></i> บันทึก
+             </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // ====================================================================
+    // ⚠️ นำ URL ของ Web App ที่ได้จาก Google Apps Script มาใส่ในช่องนี้ ⚠️
+    // ====================================================================
+    const API_URL = 'https://script.google.com/macros/s/xxxxxxxxxxxxxxx/exec'; 
+
+    let allData = [];
+    let sortState = { col: 'ReportDate', asc: false };
+
+    window.onload = function() {
+      fetchData();
+      startClock();
+    };
+    
+    function startClock() {
+        setInterval(() => {
+            const now = new Date();
+            const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+            const el = document.getElementById('current-datetime');
+            if(el) el.innerText = now.toLocaleDateString('th-TH', options);
+        }, 1000);
+    }
+
+    function switchTab(tab) {
+      document.querySelectorAll('nav button').forEach(b => b.classList.remove('nav-active', 'font-bold'));
+      document.querySelectorAll('nav button').forEach(b => b.classList.add('text-slate-500'));
+      document.getElementById('btn-' + tab).classList.add('nav-active');
+      document.getElementById('btn-' + tab).classList.remove('text-slate-500');
+
+      const dash = document.getElementById('dashboard-section');
+      const dataSec = document.getElementById('data-section');
+      if (tab === 'dashboard') {
+        dash.classList.remove('hidden');
+        dataSec.classList.add('hidden');
+        renderDashboard();
+      } else {
+        dash.classList.add('hidden');
+        dataSec.classList.remove('hidden');
+      }
+    }
+
+    function fetchData() {
+      document.getElementById('loading').style.display = 'flex';
+      
+      fetch(API_URL + '?action=getData')
+        .then(response => response.json())
+        .then(data => {
+          onDataLoaded(data);
+        })
+        .catch(err => {
+          Swal.fire({icon: 'error', title: 'เกิดข้อผิดพลาด', text: err.message || err});
+          document.getElementById('loading').style.display = 'none';
+        });
+    }
+
+    function onDataLoaded(data) {
+      allData = data;
+      populateDatalists();
+      filterTable();
+      renderDashboard();
+      document.getElementById('loading').style.display = 'none';
+    }
+    
+    function populateDatalists() {
+        updateDatalist('list-disaster', 'DisasterType');
+        updateDatalist('list-province', 'Province');
+        updateDatalist('list-shop', 'ShopName');
+        updateDatalist('list-team', 'TeamName');
+        updateDatalist('list-cartype', 'CarType');
+        updateDatalist('list-customer-group', 'CustomerGroup');
+        updateDatalist('list-dash-disaster', 'DisasterType', true);
+        updateDatalist('list-dash-province', 'Province', true);
+        updateDatalist('list-dash-customer', 'CustomerGroup', true);
+    }
+    
+    function updateDatalist(listId, fieldName, includeAll = false) {
+        const uniqueValues = [...new Set(allData.map(d => d[fieldName]).filter(Boolean))];
+        const datalist = document.getElementById(listId);
+        datalist.innerHTML = ''; 
+        if (includeAll) {
+             const opt = document.createElement('option');
+             opt.value = 'ทั้งหมด';
+             datalist.appendChild(opt);
+        }
+        uniqueValues.forEach(val => {
+            const opt = document.createElement('option');
+            opt.value = val;
+            datalist.appendChild(opt);
+        });
+    }
+
+    function renderDashboard() {
+      const filterDisaster = document.getElementById('filter-dash-disaster').value;
+      const filterProvince = document.getElementById('filter-dash-province').value;
+      const filterCustomer = document.getElementById('filter-dash-customer').value;
+
+      let dashData = allData.filter(item => {
+        let matchD = !filterDisaster || filterDisaster === 'ทั้งหมด' || item.DisasterType === filterDisaster;
+        let matchP = !filterProvince || filterProvince === 'ทั้งหมด' || item.Province === filterProvince;
+        let matchC = !filterCustomer || filterCustomer === 'ทั้งหมด' || item.CustomerGroup === filterCustomer;
+        return matchD && matchP && matchC;
+      });
+      const totalClaims = dashData.length;
+      let estSum = 0;
+      
+      let approvedSum = 0;
+      let approvedCount = 0;
+      const approvedByGroup = {};
+
+      let totalLossSum = 0;
+      let totalLossCount = 0;
+      const totalLossByGroup = {};
+      let repairableSum = 0;
+      let repairableCount = 0;
+      const repairableByGroup = {};
+      
+      let inspectedTrue = 0;
+      let inspectedFalse = 0;
+      
+      dashData.forEach(item => {
+          const est = Number(item.EstCost) || 0;
+          const app = Number(item.ApprovedCost) || 0;
+          const hasApprovedDate = item.ApprovedDate && item.ApprovedDate.trim() !== '';
+          const isTotalLoss = item.DamageLevel && item.DamageLevel.includes('ระดับ E');
+          const group = item.CustomerGroup || 'ไม่ระบุ';
+          const isInspected = item.Inspected === 'ตรวจที่อู่แล้ว' || item.Inspected === 'ตรวจจากรูปแล้ว';
+
+          estSum += est;
+
+          if (hasApprovedDate) {
+              approvedSum += app;
+              approvedCount++;
+              if (!approvedByGroup[group]) approvedByGroup[group] = { count: 0, amount: 0 };
+              approvedByGroup[group].count++;
+              approvedByGroup[group].amount += app;
+
+              if (isTotalLoss) {
+                  totalLossSum += app;
+                  totalLossCount++;
+                  if (!totalLossByGroup[group]) totalLossByGroup[group] = { count: 0, amount: 0 };
+                  totalLossByGroup[group].count++;
+                  totalLossByGroup[group].amount += app;
+              }
+          }
+          
+          if (isInspected && !isTotalLoss) {
+               repairableSum += est;
+               repairableCount++;
+               if (!repairableByGroup[group]) repairableByGroup[group] = { count: 0, amount: 0 };
+               repairableByGroup[group].count++;
+               repairableByGroup[group].amount += est;
+          }
+
+          if(isInspected) inspectedTrue++;
+          else inspectedFalse++; 
+      });
+
+      function renderBreakdown(containerId, dataObj, colorClass) {
+          const container = document.getElementById(containerId);
+          container.innerHTML = '';
+          const entries = Object.entries(dataObj);
+          if (entries.length > 0) {
+              entries.sort((a, b) => b[1].amount - a[1].amount);
+              entries.forEach(([grp, data]) => {
+                  container.innerHTML += `
+                    <div class="flex justify-between items-center border-b border-${colorClass}-100 pb-1 last:border-0">
+                        <span class="truncate pr-2 w-1/3 text-xs text-slate-600">${grp}</span>
+                        <div class="text-right w-2/3">
+                            <span class="whitespace-nowrap font-medium text-${colorClass}-600 text-xs">${data.amount.toLocaleString()}</span>
+                            <span class="text-[9px] text-slate-400 ml-1">(${data.count})</span>
+                        </div>
+                    </div>
+                  `;
+              });
+          } else {
+              container.innerHTML = '<div class="text-slate-400 italic text-center py-2 text-xs">ไม่มีรายการ</div>';
+          }
+      }
+
+      document.getElementById('kpi-approved').textContent = approvedSum.toLocaleString();
+      document.getElementById('kpi-approved-count').textContent = approvedCount.toLocaleString();
+      renderBreakdown('approved-breakdown', approvedByGroup, 'emerald'); 
+      
+      document.getElementById('kpi-repairable-amt').textContent = repairableSum.toLocaleString();
+      document.getElementById('kpi-repairable-count').textContent = repairableCount.toLocaleString();
+      renderBreakdown('repairable-breakdown', repairableByGroup, 'indigo'); 
+      
+      document.getElementById('kpi-totalloss-amt').textContent = totalLossSum.toLocaleString();
+      document.getElementById('kpi-totalloss-count').textContent = totalLossCount.toLocaleString();
+      renderBreakdown('totalloss-breakdown', totalLossByGroup, 'rose'); 
+
+      document.getElementById('kpi-total').innerHTML = `${totalClaims.toLocaleString()} <span class="text-sm font-normal text-slate-400">คัน</span>`;
+      document.getElementById('kpi-est').textContent = estSum.toLocaleString();
+      document.getElementById('kpi-inspected-count').innerHTML = `${inspectedTrue.toLocaleString()} <span class="text-sm font-normal text-slate-400">คัน</span>`;
+      document.getElementById('kpi-pending-count').innerHTML = `${inspectedFalse.toLocaleString()} <span class="text-sm font-normal text-slate-400">คัน</span>`;
+
+      renderStatusCards(dashData);
+      renderDamageLevelChart(dashData, totalClaims);
+      renderCustomerCards(dashData);
+      renderProvinceCards(dashData);
+      renderShopRanking(dashData);
+    }
+
+    function renderStatusCards(data) {
+      const total = data.length;
+      const counts = {};
+      data.forEach(d => { counts[d.Status || 'รอระบุ'] = (counts[d.Status || 'รอระบุ'] || 0) + 1; });
+      const container = document.getElementById('card-status-container');
+      container.innerHTML = '';
+      
+      const statusMeta = {
+        'ยังไม่เข้าอู่': { color: 'bg-slate-50 text-slate-600', border: 'border-slate-300', icon: 'fa-warehouse' },
+        'รอเสนอราคา': { color: 'bg-yellow-50 text-yellow-700', border: 'border-yellow-400', icon: 'fa-file-invoice-dollar' },
+        'รอเข้าไปตรวจ': { color: 'bg-indigo-50 text-indigo-700', border: 'border-indigo-400', icon: 'fa-magnifying-glass' },
+        'กำลังประเมิน': { color: 'bg-purple-50 text-purple-700', border: 'border-purple-400', icon: 'fa-calculator' },
+        'รออนุมัติ': { color: 'bg-orange-50 text-orange-700', border: 'border-orange-400', icon: 'fa-clock' },
+        'อนุมัติแล้ว': { color: 'bg-teal-50 text-teal-700', border: 'border-teal-400', icon: 'fa-check-circle' },
+        'กำลังซ่อม': { color: 'bg-blue-50 text-blue-700', border: 'border-blue-500', icon: 'fa-wrench' },
+        'รออะไหล่B/O': { color: 'bg-rose-50 text-rose-700', border: 'border-rose-400', icon: 'fa-box-open' },
+        'รถเสร็จแล้ว': { color: 'bg-emerald-50 text-emerald-700', border: 'border-emerald-500', icon: 'fa-flag-checkered' },
+        'คืนทุนแล้ว': { color: 'bg-slate-800 text-slate-200', border: 'border-slate-900', icon: 'fa-sack-dollar' }
+      };
+      
+      Object.entries(counts).forEach(([status, count]) => {
+        const meta = statusMeta[status] || { color: 'bg-white text-slate-700', border: 'border-slate-200', icon: 'fa-circle' };
+        const percent = total > 0 ? ((count / total) * 100).toFixed(1) : 0;
+        
+        container.innerHTML += `
+          <div class="p-4 rounded-lg shadow-sm border-l-4 ${meta.border} ${meta.color} flex flex-col justify-between h-24 relative overflow-hidden group hover:shadow-md transition">
+            <div class="flex justify-between items-start z-10">
+              <span class="text-xs font-bold uppercase tracking-wide opacity-80">${status}</span>
+              <i class="fa-solid ${meta.icon} opacity-50 text-lg"></i>
+            </div>
+            <div class="z-10 mt-auto flex items-end justify-between">
+                <div class="text-2xl font-bold">${count}</div>
+                <div class="text-xs opacity-75 font-medium mb-1">${percent}%</div>
+            </div>
+          </div>`;
+      });
+    }
+
+    function renderDamageLevelChart(data, total) {
+      const counts = {};
+      data.forEach(d => {
+          let dmg = d.DamageLevel || 'ไม่ระบุ';
+          let short = dmg.split(' –')[0];
+          if(!short.includes('ระดับ')) short = 'ไม่ระบุ';
+          counts[short] = (counts[short] || 0) + 1;
+      });
+      const container = document.getElementById('card-damage-level-container');
+      container.innerHTML = '';
+      const keys = Object.keys(counts).sort();
+      keys.forEach(key => {
+          const val = counts[key];
+          const pct = total > 0 ? ((val/total)*100).toFixed(1) : 0;
+          let color = 'bg-slate-300';
+          if(key.includes('A')) color = 'bg-blue-400';
+          if(key.includes('B')) color = 'bg-cyan-400';
+          if(key.includes('C')) color = 'bg-yellow-400';
+          if(key.includes('D')) color = 'bg-orange-400';
+          if(key.includes('E')) color = 'bg-rose-500';
+
+          container.innerHTML += `
+            <div class="flex items-center text-sm mb-2">
+                <div class="w-20 font-semibold text-slate-600">${key}</div>
+                <div class="flex-grow mx-3 bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                   <div class="${color} h-2.5 rounded-full" style="width: ${pct}%"></div>
+                </div>
+                <div class="w-10 text-right font-bold text-slate-700">${val}</div>
+            </div>
+          `;
+      });
+    }
+
+    function getCustomerIcon(group) {
+        group = group.toLowerCase();
+        if(group.includes('secap')) return 'fa-bolt'; 
+        if(group.includes('bjc')) return 'fa-cart-shopping'; 
+        if(group.includes('thaibev')) return 'fa-wine-bottle'; 
+        if(group.includes('ทั่วไป')) return 'fa-users';
+        return 'fa-building';
+    }
+
+    function renderCustomerCards(data) {
+      const counts = {};
+      data.forEach(d => { const grp = d.CustomerGroup || 'ไม่ระบุ'; counts[grp] = (counts[grp] || 0) + 1; });
+      const sorted = Object.entries(counts).sort((a,b) => b[1] - a[1]);
+      const container = document.getElementById('card-customer-container');
+      container.innerHTML = '';
+      sorted.forEach(([group, count]) => {
+        const iconClass = getCustomerIcon(group);
+        container.innerHTML += `
+          <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100 hover:bg-slate-100 transition mb-2">
+            <div class="flex items-center">
+              <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center mr-3 shadow-sm">
+                 <i class="fa-solid ${iconClass} text-sm"></i>
+              </div>
+              <span class="font-medium text-slate-700 text-sm">${group}</span>
+            </div>
+            <span class="text-sm font-bold text-slate-800 bg-white px-2 py-0.5 rounded border border-slate-200">${count}</span>
+          </div>`;
+      });
+    }
+
+    function renderShopRanking(data) {
+        const shopCounts = {};
+        data.forEach(d => { if(d.ShopName) shopCounts[d.ShopName] = (shopCounts[d.ShopName] || 0) + 1; });
+        const sorted = Object.entries(shopCounts).sort((a,b) => b[1] - a[1]);
+        const tbody = document.getElementById('shop-ranking-body');
+        tbody.innerHTML = '';
+        if (sorted.length === 0) { tbody.innerHTML = '<tr><td colspan="2" class="p-4 text-center text-slate-400">ไม่มีข้อมูล</td></tr>'; return; }
+        sorted.forEach(([shop, count], index) => {
+            let icon = index === 0 ? '<i class="fa-solid fa-trophy text-yellow-400 ml-1"></i>' : '';
+            tbody.innerHTML += `
+                <tr class="hover:bg-slate-50 border-b last:border-0">
+                    <td class="py-3 px-3 text-slate-700 truncate max-w-[180px]" title="${shop}">${shop} ${icon}</td>
+                    <td class="py-3 px-3 text-right"><span class="bg-blue-50 text-blue-700 px-2 py-1 rounded-md font-bold text-xs">${count}</span></td>
+                </tr>`;
+        });
+    }
+
+    function renderProvinceCards(data) {
+        const provCounts = {};
+        data.forEach(d => { const p = d.Province || 'ไม่ระบุ'; provCounts[p] = (provCounts[p] || 0) + 1; });
+        const sorted = Object.entries(provCounts).sort((a,b) => b[1] - a[1]).slice(0, 5);
+        const container = document.getElementById('card-province-container');
+        container.innerHTML = '';
+        sorted.forEach(([prov, count], index) => {
+           let rankColor = 'bg-slate-200 text-slate-600';
+           if(index === 0) rankColor = 'bg-yellow-400 text-white shadow-sm';
+           if(index === 1) rankColor = 'bg-slate-400 text-white';
+           if(index === 2) rankColor = 'bg-orange-400 text-white';
+           const percent = (count / data.length * 100).toFixed(1);
+           
+           container.innerHTML += `
+             <div class="relative mb-3">
+                <div class="flex justify-between items-end mb-1">
+                   <span class="text-sm font-medium text-slate-700 flex items-center"><span class="w-5 h-5 rounded-full ${rankColor} text-[10px] flex items-center justify-center mr-2 font-bold">${index + 1}</span>${prov}</span>
+                   <span class="text-sm font-bold text-slate-800">${count}</span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-1.5"><div class="bg-orange-400 h-1.5 rounded-full" style="width: ${percent}%"></div></div>
+             </div>`;
+        });
+    }
+
+    function sortTable(column) {
+        if (sortState.col === column) {
+            sortState.asc = !sortState.asc;
+        } else {
+            sortState.col = column;
+            sortState.asc = true;
+        }
+        document.querySelectorAll('thead i').forEach(i => i.className = 'fa-solid fa-sort text-slate-300 ml-1');
+        const activeIcon = document.getElementById(`sort-icon-${column}`);
+        if(activeIcon) {
+            activeIcon.className = sortState.asc ? 'fa-solid fa-sort-up text-blue-600 ml-1' : 'fa-solid fa-sort-down text-blue-600 ml-1';
+        }
+        filterTable();
+    }
+
+    function filterTable() {
+      const search = document.getElementById('search-input').value.toLowerCase();
+      const status = document.getElementById('filter-status').value;
+      const inspected = document.getElementById('filter-inspected').value;
+      const showCompleted = document.getElementById('toggle-completed').checked;
+
+      let filtered = allData.filter(item => {
+        const txt = (item.ClaimNo + item.PlateNo + item.OwnerName + item.ShopName + (item.TeamName||'') + (item.Remark||'')).toLowerCase();
+        const matchesSearch = txt.includes(search);
+        const matchesStatus = status === 'ทั้งหมด' || item.Status === status;
+        
+        const itemInspected = item.Inspected || 'ยังไม่ได้ตรวจ';
+        let matchesInspected = inspected === 'ทั้งหมด' || (itemInspected === inspected);
+        
+        let matchesVisibility = true;
+        if (!showCompleted) {
+             if (item.Status === 'รถเสร็จแล้ว' || item.Status === 'คืนทุนแล้ว') {
+                 matchesVisibility = false;
+             }
+        }
+        return matchesSearch && matchesStatus && matchesInspected && matchesVisibility;
+      });
+
+      filtered.sort((a, b) => {
+         let valA = a[sortState.col] || '';
+         let valB = b[sortState.col] || '';
+         if (!isNaN(parseFloat(valA)) && isFinite(valA) && !isNaN(parseFloat(valB)) && isFinite(valB)) {
+             valA = parseFloat(valA);
+             valB = parseFloat(valB);
+         } else {
+             valA = valA.toString().toLowerCase();
+             valB = valB.toString().toLowerCase();
+         }
+         if (valA < valB) return sortState.asc ? -1 : 1;
+         if (valA > valB) return sortState.asc ? 1 : -1;
+         return 0;
+      });
+      renderTable(filtered);
+    }
+
+    function renderTable(data) {
+      const tbody = document.getElementById('data-table-body');
+      tbody.innerHTML = '';
+      if (data.length === 0) {
+        document.getElementById('no-data-msg').classList.remove('hidden');
+        return;
+      }
+      document.getElementById('no-data-msg').classList.add('hidden');
+
+      const today = new Date();
+      data.forEach(row => {
+        let statusBadge = `<span class="px-2 py-1 rounded text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-300">รอระบุ</span>`;
+        
+        const s = row.Status;
+        if(s === 'ยังไม่เข้าอู่') statusBadge = `<span class="px-2 py-1 rounded text-xs font-semibold bg-slate-100 text-slate-500 border border-slate-300">ยังไม่เข้าอู่</span>`;
+        else if(s === 'รอเสนอราคา') statusBadge = `<span class="px-2 py-1 rounded text-xs font-semibold bg-yellow-50 text-yellow-700 border border-yellow-300">รอเสนอราคา</span>`;
+        else if(s === 'รอเข้าไปตรวจ') statusBadge = `<span class="px-2 py-1 rounded text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-300">รอเข้าตรวจ</span>`;
+        else if(s === 'กำลังประเมิน') statusBadge = `<span class="px-2 py-1 rounded text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-300">กำลังประเมิน</span>`;
+        else if(s === 'รออนุมัติ') statusBadge = `<span class="px-2 py-1 rounded text-xs font-semibold bg-orange-50 text-orange-700 border border-orange-300">รออนุมัติ</span>`;
+        else if(s === 'อนุมัติแล้ว') statusBadge = `<span class="px-2 py-1 rounded text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-300">อนุมัติแล้ว</span>`;
+        else if(s === 'กำลังซ่อม') statusBadge = `<span class="px-2 py-1 rounded text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-300">กำลังซ่อม</span>`;
+        else if(s === 'รออะไหล่B/O') statusBadge = `<span class="px-2 py-1 rounded text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-300">รออะไหล่</span>`;
+        else if(s === 'รถเสร็จแล้ว') statusBadge = `<span class="px-2 py-1 rounded text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-400"><i class="fa-solid fa-check mr-1"></i>รถเสร็จ</span>`;
+        else if(s === 'คืนทุนแล้ว') statusBadge = `<span class="px-2 py-1 rounded text-xs font-semibold bg-slate-800 text-white border border-slate-600"><i class="fa-solid fa-ban mr-1"></i>คืนทุน</span>`;
+        
+        let daysParked = '-';
+        if (row.ReportDate) {
+            const reportDate = new Date(row.ReportDate);
+            const diffTime = Math.abs(today - reportDate);
+            daysParked = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        }
+        
+        let inspectBadge = '<span class="text-slate-300 text-lg"><i class="fa-solid fa-circle-question"></i></span>';
+        const inspectVal = row.Inspected ? row.Inspected.trim() : '';
+        if(inspectVal === 'ตรวจที่อู่แล้ว') inspectBadge = '<span class="text-emerald-500 text-lg" title="ตรวจที่อู่แล้ว"><i class="fa-solid fa-shop"></i></span>';
+        else if(inspectVal === 'ตรวจจากรูปแล้ว') inspectBadge = '<span class="text-blue-500 text-lg" title="ตรวจจากรูปแล้ว"><i class="fa-solid fa-image"></i></span>';
+        else inspectBadge = '<span class="text-orange-400 text-lg" title="ยังไม่ได้ตรวจ"><i class="fa-solid fa-clock"></i></span>';
+        
+        let damageText = row.DamageLevel ? row.DamageLevel.split(' –')[0] : '-';
+        
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50 transition border-b border-slate-100 last:border-0';
+        tr.innerHTML = `
+          <td class="px-4 py-3 whitespace-nowrap text-slate-600 font-medium">
+             <span class="bg-slate-100 px-2 py-1 rounded text-xs font-bold text-slate-700">${daysParked} วัน</span>
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap font-medium">
+             <a href="javascript:void(0)" onclick="editItem('${row.ID}', '${row.ClaimNo}')" class="text-blue-600 hover:text-blue-800 hover:underline flex items-center group">
+                ${row.ClaimNo} <i class="fa-solid fa-pen-to-square ml-2 text-xs opacity-0 group-hover:opacity-100 transition"></i>
+             </a>
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap">
+            <div class="font-bold text-slate-700">${row.PlateNo}</div>
+            <div class="text-xs text-slate-500">${row.CarType || '-'}</div>
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap text-slate-600 truncate max-w-[150px]" title="${row.ShopName || ''}">${row.ShopName || '-'}</td>
+          <td class="px-4 py-3 whitespace-nowrap text-xs text-slate-600 font-medium">${damageText}</td>
+          <td class="px-4 py-3 whitespace-nowrap">
+            ${statusBadge}
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap text-center">
+            ${inspectBadge}
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap text-slate-500 text-xs">${row.TeamName || '-'}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function exportToExcel() {
+        if (!allData || allData.length === 0) {
+            Swal.fire('ไม่มีข้อมูล', 'ไม่พบข้อมูลสำหรับ Export', 'warning');
+            return;
+        }
+
+        const headers = [
+            'Claim No', 'Report Date', 'Disaster Type', 'Province', 'Car Type', 'Plate No', 'Brand/Model',
+            'Policy No', 'Owner Name', 'Customer Group', 'Shop Name', 'Status', 'Est Cost', 'Approved Cost',
+            'Approved Date', 'Delivery Date', 'Team Name', 'Remark', 'Inspected', 'Damage Level'
+        ];
+        const keys = [
+            'ClaimNo', 'ReportDate', 'DisasterType', 'Province', 'CarType', 'PlateNo', 'BrandModel',
+            'PolicyNo', 'OwnerName', 'CustomerGroup', 'ShopName', 'Status', 'EstCost', 'ApprovedCost',
+            'ApprovedDate', 'DeliveryDate', 'TeamName', 'Remark', 'Inspected', 'DamageLevel'
+        ];
+        
+        let csvContent = "\uFEFF"; // BOM for UTF-8
+        csvContent += headers.join(",") + "\n";
+        allData.forEach(row => {
+            const rowData = keys.map(key => {
+                let val = row[key] === undefined || row[key] === null ? "" : String(row[key]);
+                val = val.replace(/"/g, '""');
+                return `"${val}"`;
+            });
+            csvContent += rowData.join(",") + "\n";
+        });
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `Motor_Claim_Export_${new Date().toISOString().slice(0,10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    function openModal() {
+      document.getElementById('claim-form').reset();
+      document.getElementById('field-id').value = ''; 
+      document.getElementById('modal-title').innerText = 'เพิ่มรายการเคลมใหม่';
+      document.getElementById('btn-delete').classList.add('hidden'); 
+      document.getElementById('crud-modal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('crud-modal').classList.add('hidden');
+    }
+
+    function editItem(id, claimNo) {
+      let item = allData.find(d => d.ID == id && (claimNo ? d.ClaimNo == claimNo : true));
+      if (!item) item = allData.find(d => d.ID == id); 
+      
+      if (!item) return;
+      document.getElementById('modal-title').innerText = 'แก้ไขข้อมูลเคลม';
+      document.getElementById('field-id').value = item.ID;
+      document.getElementById('btn-delete').classList.remove('hidden');
+      
+      const inputs = document.querySelectorAll('#claim-form input, #claim-form select, #claim-form textarea');
+      inputs.forEach(input => {
+        const name = input.name;
+        if (item[name] !== undefined) {
+          input.value = item[name];
+        }
+      });
+      document.getElementById('crud-modal').classList.remove('hidden');
+    }
+    
+    function markAsComplete() {
+        const statusInput = document.getElementById('input-status');
+        statusInput.value = 'รถเสร็จแล้ว'; 
+        const form = document.getElementById('claim-form');
+        form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+    }
+
+    function handleFormSubmit(e) {
+      e.preventDefault();
+      const form = document.getElementById('claim-form');
+      const formData = new FormData(form);
+      const formObj = {};
+      formData.forEach((value, key) => formObj[key] = value);
+
+      const btn = form.querySelector('button[type="submit"]');
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> กำลังบันทึก...';
+      btn.disabled = true;
+
+      fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'saveData', data: formObj })
+      })
+      .then(response => response.json())
+      .then(res => {
+        if(res.success) {
+          closeModal();
+          btn.innerHTML = originalText;
+          btn.disabled = false;
+          fetchData(); 
+          Swal.fire({
+            icon: 'success', title: 'เรียบร้อย!',
+            text: res.message, timer: 1500, showConfirmButton: false
+          });
+        } else {
+          throw new Error(res.message);
+        }
+      })
+      .catch(err => {
+         btn.innerHTML = originalText;
+         btn.disabled = false;
+         Swal.fire({icon: 'error', title: 'Error', text: err.message || 'ไม่สามารถบันทึกข้อมูลได้'});
+      });
+    }
+
+    function deleteItemFromModal() {
+      const id = document.getElementById('field-id').value;
+      if(!id) return;
+
+      Swal.fire({
+        title: 'ยืนยันการลบ?', text: "ข้อมูลนี้จะถูกลบและไม่สามารถกู้คืนได้!",
+        icon: 'warning', showCancelButton: true,
+        confirmButtonColor: '#ef4444', cancelButtonColor: '#cbd5e1',
+        confirmButtonText: 'ลบข้อมูล', cancelButtonText: 'ยกเลิก'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          document.getElementById('loading').style.display = 'flex';
+          closeModal(); 
+          
+          fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'deleteData', id: id })
+          })
+          .then(response => response.json())
+          .then(res => {
+            if(res.success) {
+               fetchData();
+               Swal.fire({ icon: 'success', title: 'ลบสำเร็จ', showConfirmButton: false, timer: 1500 });
+            } else {
+               throw new Error(res.message);
+            }
+          })
+          .catch(err => {
+             document.getElementById('loading').style.display = 'none';
+             Swal.fire({icon: 'error', title: 'Error', text: err.message || 'ไม่สามารถลบข้อมูลได้'});
+          });
+        }
+      });
+    }
+  </script>
+</body>
+</html>
